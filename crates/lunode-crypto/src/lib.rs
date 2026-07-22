@@ -7,3 +7,7 @@
 mod sha256;
 pub use sha256::Sha256;
 pub use sha256::sha256;
+
+mod ripemd160;
+pub use ripemd160::Ripemd160;
+pub use ripemd160::ripemd160;
