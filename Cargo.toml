@@ -1,3 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+
+[workspace.dependencies]
+lunode-crypto = { path = "crates/lunode-crypto" }
+lunode-primitives = { path = "crates/lunode-primitives" }

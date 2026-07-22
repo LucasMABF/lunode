@@ -5,3 +5,10 @@ version = 4
 [[package]]
 name = "lunode-crypto"
 version = "0.1.0"
+
+[[package]]
+name = "lunode-primitives"
+version = "0.1.0"
+dependencies = [
+ "lunode-crypto",
+]
