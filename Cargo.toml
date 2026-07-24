@@ -5,3 +5,4 @@ members = ["crates/*"]
 [workspace.dependencies]
 lunode-crypto = { path = "crates/lunode-crypto" }
 lunode-primitives = { path = "crates/lunode-primitives" }
+proptest = "1.11.0"

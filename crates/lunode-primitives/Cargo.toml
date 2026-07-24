@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 lunode-crypto = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
