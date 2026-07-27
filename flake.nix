@@ -42,7 +42,8 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          packages = [
+          packages = with pkgs; [
+            cargo-deny
             rustToolchain
           ];
         };

@@ -6,3 +6,7 @@ members = ["crates/*"]
 lunode-crypto = { path = "crates/lunode-crypto" }
 lunode-primitives = { path = "crates/lunode-primitives" }
 proptest = "1.11.0"
+
+[workspace.package]
+license = "MIT"
+publish = false

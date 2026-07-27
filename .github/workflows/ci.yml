@@ -34,3 +34,6 @@ jobs:
 
       - name: Test
         run: nix develop -c cargo test --workspace --locked
+
+      - name: Deny
+        run: nix develop -c cargo deny check
