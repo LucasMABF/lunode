@@ -2,6 +2,9 @@ use alloc::vec::Vec;
 
 use crate::{Hash160, Hash256};
 
+/// Upper bound on decoded sizes (32 MiB, Core's `MAX_SIZE`).
+const MAX_SIZE: u64 = 0x02000000;
+
 macro_rules! impl_consensus_encoding {
     ($type:ident, $($field:ident),+ $(,)?) => {
         impl $crate::Encodable for $type {
@@ -38,6 +41,26 @@ macro_rules! impl_consensus_encoding {
                 Ok(Self($crate::Decodable::decode(reader)?))
             }
         }
+    };
+}
+
+macro_rules! impl_int_encoding {
+    ($($type:ident),+ $(,)?) => {
+        $(
+            impl Encodable for $type {
+                fn encode<W: Writer>(&self, writer: &mut W) {
+                    writer.write(&self.to_le_bytes());
+                }
+            }
+
+            impl Decodable for $type {
+                fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
+                    let mut bytes = [0_u8; size_of::<$type>()];
+                    reader.read(&mut bytes)?;
+                    Ok(Self::from_le_bytes(bytes))
+                }
+            }
+        )+
     };
 }
 
@@ -81,18 +104,6 @@ pub trait Encodable {
     fn encode<W: Writer>(&self, writer: &mut W);
 }
 
-impl Encodable for u32 {
-    fn encode<W: Writer>(&self, writer: &mut W) {
-        writer.write(&self.to_le_bytes());
-    }
-}
-
-impl Encodable for i32 {
-    fn encode<W: Writer>(&self, writer: &mut W) {
-        writer.write(&self.to_le_bytes());
-    }
-}
-
 impl<const N: usize> Encodable for [u8; N] {
     fn encode<W: Writer>(&self, writer: &mut W) {
         writer.write(self);
@@ -104,6 +115,10 @@ impl<const N: usize> Encodable for [u8; N] {
 pub enum DecodeError {
     /// The input ended before the value was complete.
     UnexpectedEnd,
+    /// The value was not encoded in its minimal form.
+    NonCanonical,
+    /// The decoded size exceeds the 32 MiB limit.
+    SizeTooLarge,
 }
 
 /// A source of serialized bytes.
@@ -140,26 +155,82 @@ pub trait Decodable: Sized {
     fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError>;
 }
 
-impl Decodable for u32 {
-    fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
-        let mut bytes = [0; 4];
-        reader.read(&mut bytes)?;
-        Ok(u32::from_le_bytes(bytes))
-    }
-}
-
-impl Decodable for i32 {
-    fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
-        let mut bytes = [0; 4];
-        reader.read(&mut bytes)?;
-        Ok(i32::from_le_bytes(bytes))
-    }
-}
+impl_int_encoding!(u8, u16, u32, u64, i32);
 
 impl<const N: usize> Decodable for [u8; N] {
     fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
         let mut bytes = [0; N];
         reader.read(&mut bytes)?;
         Ok(bytes)
+    }
+}
+
+/// A variable-length integer encoding, used for lengths in the wire format.
+///
+/// Values encode to 1, 3, 5, or 9 bytes depending on magnitude. Every value
+/// has exactly one valid encoding: decoding rejects non-minimal forms and
+/// sizes above 32 MiB.
+///
+/// ```
+/// use lunode_primitives::{CompactSize, Encodable};
+///
+/// let mut bytes = Vec::new();
+/// CompactSize(253).encode(&mut bytes);
+/// assert_eq!(bytes, [0xfd, 0xfd, 0x00]);
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CompactSize(pub u64);
+
+impl Encodable for CompactSize {
+    fn encode<W: Writer>(&self, writer: &mut W) {
+        if self.0 <= 0xfc {
+            (self.0 as u8).encode(writer);
+        } else if self.0 <= u16::MAX as u64 {
+            0xfd_u8.encode(writer);
+            (self.0 as u16).encode(writer);
+        } else if self.0 <= u32::MAX as u64 {
+            0xfe_u8.encode(writer);
+            (self.0 as u32).encode(writer);
+        } else {
+            0xff_u8.encode(writer);
+            self.0.encode(writer);
+        }
+    }
+}
+
+impl Decodable for CompactSize {
+    fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
+        let marker = u8::decode(reader)?;
+
+        let n = match marker {
+            n @ 0..=0xfc => n as u64,
+            0xfd => {
+                let n = u16::decode(reader)? as u64;
+                if n <= 0xfc {
+                    return Err(DecodeError::NonCanonical);
+                }
+                n
+            }
+            0xfe => {
+                let n = u32::decode(reader)? as u64;
+                if n <= u16::MAX as u64 {
+                    return Err(DecodeError::NonCanonical);
+                }
+                n
+            }
+            0xff => {
+                let n = u64::decode(reader)?;
+                if n <= u32::MAX as u64 {
+                    return Err(DecodeError::NonCanonical);
+                }
+                n
+            }
+        };
+
+        if n > MAX_SIZE {
+            return Err(DecodeError::SizeTooLarge);
+        }
+
+        Ok(CompactSize(n))
     }
 }

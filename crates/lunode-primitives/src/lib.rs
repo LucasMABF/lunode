@@ -13,6 +13,7 @@ pub use hash::hash160;
 pub use hash::hash256;
 
 mod serialize;
+pub use serialize::CompactSize;
 pub use serialize::Decodable;
 pub use serialize::DecodeError;
 pub use serialize::Encodable;
