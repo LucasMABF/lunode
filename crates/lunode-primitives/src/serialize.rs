@@ -4,6 +4,8 @@ use crate::{Hash160, Hash256};
 
 /// Upper bound on decoded sizes (32 MiB, Core's `MAX_SIZE`).
 const MAX_SIZE: u64 = 0x02000000;
+/// Upper bound on a single decode allocation (Core's `MAX_VECTOR_ALLOCATE`).
+const MAX_VECTOR_ALLOCATE: usize = 5000000;
 
 macro_rules! impl_consensus_encoding {
     ($type:ident, $($field:ident),+ $(,)?) => {
@@ -110,6 +112,13 @@ impl<const N: usize> Encodable for [u8; N] {
     }
 }
 
+impl Encodable for Vec<u8> {
+    fn encode<W: Writer>(&self, writer: &mut W) {
+        CompactSize(self.len() as u64).encode(writer);
+        writer.write(self);
+    }
+}
+
 /// An error decoding a value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DecodeError {
@@ -161,6 +170,25 @@ impl<const N: usize> Decodable for [u8; N] {
     fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
         let mut bytes = [0; N];
         reader.read(&mut bytes)?;
+        Ok(bytes)
+    }
+}
+
+impl Decodable for Vec<u8> {
+    fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
+        let size = CompactSize::decode(reader)?.0 as usize;
+        let mut bytes = Vec::new();
+
+        let mut i = 0;
+        while i < size {
+            let chunk = (size - i).min(MAX_VECTOR_ALLOCATE);
+
+            bytes.resize(i + chunk, 0);
+
+            reader.read(&mut bytes[i..i + chunk])?;
+            i += chunk;
+        }
+
         Ok(bytes)
     }
 }
