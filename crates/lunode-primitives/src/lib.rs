@@ -28,3 +28,7 @@ pub use block::BlockHash;
 pub use block::BlockHeader;
 pub use block::CompactTarget;
 pub use block::MerkleRoot;
+
+mod transaction;
+pub use transaction::OutPoint;
+pub use transaction::Txid;
