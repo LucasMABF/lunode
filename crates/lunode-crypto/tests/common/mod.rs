@@ -23,6 +23,10 @@ impl Rng {
         x
     }
 
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the modulo bounds the result below `n`, itself a usize"
+    )]
     pub fn randrange(&mut self, n: usize) -> usize {
         (self.next() % n as u64) as usize
     }
@@ -66,10 +70,14 @@ pub fn test_vector<H: Hasher>(hasher: &H, input: &[u8], expected_hex: &str, rng:
     }
 }
 
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the low byte at each shift offset is the intended pattern"
+)]
 pub fn long_test_string() -> Vec<u8> {
     let mut result = Vec::new();
 
-    for i in 0..200000 {
+    for i in 0..200000_u32 {
         result.push(i as u8);
         result.push((i >> 4) as u8);
         result.push((i >> 8) as u8);

@@ -21,7 +21,7 @@ fn boundary_sweep() {
         i *= 2;
     }
 
-    assert!(cursor.is_empty())
+    assert!(cursor.is_empty());
 }
 
 #[test]
@@ -48,7 +48,7 @@ fn exact_bytes() {
         let result = CompactSize::decode(&mut slice);
         if value <= MAX_SIZE {
             assert_eq!(result, Ok(CompactSize(value)));
-            assert!(slice.is_empty())
+            assert!(slice.is_empty());
         } else {
             assert_eq!(result, Err(DecodeError::SizeTooLarge));
         }
@@ -76,16 +76,16 @@ fn decode_errors() {
 
     for &(bytes, expected) in tests {
         let result = CompactSize::decode(&mut &bytes[..]);
-        assert_eq!(result, Err(expected), "input: {:02x?}", bytes);
+        assert_eq!(result, Err(expected), "input: {bytes:02x?}");
     }
 }
 
 fn arb_compact_size() -> impl Strategy<Value = CompactSize> {
     prop_oneof![
         0..=0xfc_u64,
-        0xfd..=(u16::MAX as u64),
-        (u16::MAX as u64 + 1)..=(u32::MAX as u64),
-        (u32::MAX as u64 + 1)..=u64::MAX,
+        0xfd..=u64::from(u16::MAX),
+        (u64::from(u16::MAX) + 1)..=u64::from(u32::MAX),
+        (u64::from(u32::MAX) + 1)..=u64::MAX,
     ]
     .prop_map(CompactSize)
 }
@@ -99,8 +99,8 @@ fn arb_non_canonical() -> impl Strategy<Value = Vec<u8>> {
 
     prop_oneof![
         (0..=0xfc_u64).prop_map(|n| widened(0xfd, 2, n)),
-        (0..=u16::MAX as u64).prop_map(|n| widened(0xfe, 4, n)),
-        (0..=u32::MAX as u64).prop_map(|n| widened(0xff, 8, n)),
+        (0..=u64::from(u16::MAX)).prop_map(|n| widened(0xfe, 4, n)),
+        (0..=u64::from(u32::MAX)).prop_map(|n| widened(0xff, 8, n)),
     ]
 }
 
@@ -122,7 +122,7 @@ proptest! {
         let result = CompactSize::decode(&mut slice);
         if compact_size.0 <= MAX_SIZE {
             prop_assert_eq!(result, Ok(compact_size));
-            prop_assert!(slice.is_empty())
+            prop_assert!(slice.is_empty());
         } else {
             prop_assert_eq!(result, Err(DecodeError::SizeTooLarge));
         }

@@ -113,6 +113,10 @@ impl Sha256 {
     }
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "working variables follow the FIPS 180-4 pseudocode"
+)]
 fn compress(mut state: [u32; 8], block: &[u8; 64]) -> [u32; 8] {
     let mut w = [0; 64];
 

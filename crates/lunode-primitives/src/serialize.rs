@@ -7,6 +7,11 @@ const MAX_SIZE: u64 = 0x02000000;
 /// Upper bound on a single decode allocation (Core's `MAX_VECTOR_ALLOCATE`).
 const MAX_VECTOR_ALLOCATE: usize = 5000000;
 
+const _: () = assert!(
+    MAX_SIZE <= usize::MAX as u64,
+    "consensus sizes must fit in usize"
+);
+
 macro_rules! impl_consensus_encoding {
     ($type:ident, $($field:ident),+ $(,)?) => {
         impl $crate::Encodable for $type {
@@ -133,6 +138,10 @@ pub enum DecodeError {
 /// A source of serialized bytes.
 pub trait Reader {
     /// Fills `buf` with the next `buf.len()` bytes from the source.
+    ///
+    /// # Errors
+    ///
+    /// Implementations signal exhaustion with [`DecodeError::UnexpectedEnd`].
     fn read(&mut self, buf: &mut [u8]) -> Result<(), DecodeError>;
 }
 
@@ -161,6 +170,12 @@ impl Reader for &[u8] {
 /// ```
 pub trait Decodable: Sized {
     /// Decodes a value from `reader`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DecodeError::UnexpectedEnd`] if the input ends early. Types with
+    /// a length prefix may also return [`DecodeError::NonCanonical`] or
+    /// [`DecodeError::SizeTooLarge`].
     fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError>;
 }
 
@@ -175,6 +190,10 @@ impl<const N: usize> Decodable for [u8; N] {
 }
 
 impl Decodable for Vec<u8> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "capped by CompactSize::decode at MAX_SIZE, asserted to fit usize"
+    )]
     fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
         let size = CompactSize::decode(reader)?.0 as usize;
         let mut bytes = Vec::new();
@@ -210,13 +229,21 @@ impl Decodable for Vec<u8> {
 pub struct CompactSize(pub u64);
 
 impl Encodable for CompactSize {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "each branch tests the value against the target width first"
+    )]
+    #[expect(
+        clippy::checked_conversions,
+        reason = "bounds mirror the decoder's canonicality floors"
+    )]
     fn encode<W: Writer>(&self, writer: &mut W) {
         if self.0 <= 0xfc {
             (self.0 as u8).encode(writer);
-        } else if self.0 <= u16::MAX as u64 {
+        } else if self.0 <= u64::from(u16::MAX) {
             0xfd_u8.encode(writer);
             (self.0 as u16).encode(writer);
-        } else if self.0 <= u32::MAX as u64 {
+        } else if self.0 <= u64::from(u32::MAX) {
             0xfe_u8.encode(writer);
             (self.0 as u32).encode(writer);
         } else {
@@ -227,28 +254,32 @@ impl Encodable for CompactSize {
 }
 
 impl Decodable for CompactSize {
+    #[expect(
+        clippy::checked_conversions,
+        reason = "bounds mirror the encoder's canonicality floors"
+    )]
     fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
         let marker = u8::decode(reader)?;
 
         let n = match marker {
-            n @ 0..=0xfc => n as u64,
+            n @ 0..=0xfc => u64::from(n),
             0xfd => {
-                let n = u16::decode(reader)? as u64;
+                let n = u64::from(u16::decode(reader)?);
                 if n <= 0xfc {
                     return Err(DecodeError::NonCanonical);
                 }
                 n
             }
             0xfe => {
-                let n = u32::decode(reader)? as u64;
-                if n <= u16::MAX as u64 {
+                let n = u64::from(u32::decode(reader)?);
+                if n <= u64::from(u16::MAX) {
                     return Err(DecodeError::NonCanonical);
                 }
                 n
             }
             0xff => {
                 let n = u64::decode(reader)?;
-                if n <= u32::MAX as u64 {
+                if n <= u64::from(u32::MAX) {
                     return Err(DecodeError::NonCanonical);
                 }
                 n

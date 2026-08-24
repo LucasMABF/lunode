@@ -1,5 +1,8 @@
 const INITIAL_STATE: [u32; 5] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
 
+const LEFT: usize = 0;
+const RIGHT: usize = 1;
+
 const KL: [u32; 5] = [0x00000000, 0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xa953fd4e];
 const KR: [u32; 5] = [0x50a28be6, 0x5c4dd124, 0x6d703ef3, 0x7a6d76e9, 0x00000000];
 const K: [[u32; 5]; 2] = [KL, KR];
@@ -134,6 +137,10 @@ impl Ripemd160 {
     }
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "working variables follow the RIPEMD-160 paper's pseudocode"
+)]
 fn compress(mut state: [u32; 5], block: &[u8; 64]) -> [u32; 5] {
     let mut x = [0; 16];
 
@@ -167,8 +174,6 @@ fn compress(mut state: [u32; 5], block: &[u8; 64]) -> [u32; 5] {
         }
     }
 
-    const LEFT: usize = 0;
-    const RIGHT: usize = 1;
     let t = state[1].wrapping_add(c[LEFT]).wrapping_add(d[RIGHT]);
     state[1] = state[2].wrapping_add(d[LEFT]).wrapping_add(e[RIGHT]);
     state[2] = state[3].wrapping_add(e[LEFT]).wrapping_add(a[RIGHT]);

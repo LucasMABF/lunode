@@ -72,6 +72,6 @@ proptest! {
 
         let mut cursor = serialized.as_slice();
         prop_assert_eq!(Vec::decode(&mut cursor), Ok(bytes));
-        prop_assert!(cursor.is_empty())
+        prop_assert!(cursor.is_empty());
     }
 }
