@@ -42,15 +42,15 @@ fn exact_bytes() {
         let compact_size = CompactSize(value);
         let mut bytes = Vec::new();
         compact_size.encode(&mut bytes);
-        assert_eq!(&bytes, expected);
+        assert_eq!(&bytes, expected, "value: {value:#x}");
 
-        let mut slice = bytes.as_slice();
-        let result = CompactSize::decode(&mut slice);
+        let mut cursor = bytes.as_slice();
+        let result = CompactSize::decode(&mut cursor);
         if value <= MAX_SIZE {
-            assert_eq!(result, Ok(CompactSize(value)));
-            assert!(slice.is_empty());
+            assert_eq!(result, Ok(CompactSize(value)), "value: {value:#x}");
+            assert!(cursor.is_empty(), "value: {value:#x}");
         } else {
-            assert_eq!(result, Err(DecodeError::SizeTooLarge));
+            assert_eq!(result, Err(DecodeError::SizeTooLarge), "value: {value:#x}");
         }
     }
 }
@@ -118,11 +118,11 @@ proptest! {
         };
         prop_assert_eq!(bytes.len(), expected_len);
 
-        let mut slice = bytes.as_slice();
-        let result = CompactSize::decode(&mut slice);
+        let mut cursor = bytes.as_slice();
+        let result = CompactSize::decode(&mut cursor);
         if compact_size.0 <= MAX_SIZE {
             prop_assert_eq!(result, Ok(compact_size));
-            prop_assert!(slice.is_empty());
+            prop_assert!(cursor.is_empty());
         } else {
             prop_assert_eq!(result, Err(DecodeError::SizeTooLarge));
         }
@@ -130,7 +130,7 @@ proptest! {
 
     #[test]
     fn non_canonical(bytes in arb_non_canonical()) {
-        let mut slice = bytes.as_slice();
-        prop_assert_eq!(CompactSize::decode(&mut slice), Err(DecodeError::NonCanonical));
+        let mut cursor = bytes.as_slice();
+        prop_assert_eq!(CompactSize::decode(&mut cursor), Err(DecodeError::NonCanonical));
     }
 }

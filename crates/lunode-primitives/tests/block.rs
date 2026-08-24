@@ -45,8 +45,8 @@ proptest! {
         prop_assert_eq!(bytes.len(), 80);
         prop_assert_eq!(hash256(&bytes), header.hash().0);
 
-        let mut slice = bytes.as_slice();
-        prop_assert_eq!(BlockHeader::decode(&mut slice).unwrap(), header);
-        prop_assert_eq!(slice.len(), 0);
+        let mut cursor = bytes.as_slice();
+        prop_assert_eq!(BlockHeader::decode(&mut cursor).unwrap(), header);
+        prop_assert!(cursor.is_empty());
     }
 }

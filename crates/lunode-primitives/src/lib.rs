@@ -6,6 +6,9 @@
 
 extern crate alloc;
 
+#[cfg(test)]
+mod test_utils;
+
 mod hash;
 pub use hash::Hash160;
 pub use hash::Hash256;

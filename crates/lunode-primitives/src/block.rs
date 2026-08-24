@@ -77,15 +77,8 @@ impl_consensus_encoding!(MerkleRoot);
 mod tests {
     use super::*;
 
-    use crate::{Decodable, DecodeError};
+    use crate::{Decodable, DecodeError, test_utils::hex};
     use alloc::vec::Vec;
-
-    fn hex(s: &str) -> Vec<u8> {
-        (0..s.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
-            .collect()
-    }
 
     #[test]
     fn genesis_block() {
@@ -117,13 +110,13 @@ mod tests {
 
         assert_eq!(genesis.hash(), BlockHash(expected_hash.try_into().unwrap()));
 
-        let mut slice = genesis_header_hex.as_slice();
-        assert_eq!(genesis, BlockHeader::decode(&mut slice).unwrap());
-        assert_eq!(slice.len(), 0);
+        let mut cursor = genesis_header_hex.as_slice();
+        assert_eq!(genesis, BlockHeader::decode(&mut cursor).unwrap());
+        assert!(cursor.is_empty());
 
-        let mut slice = &genesis_header_hex[..78];
+        let mut cursor = &genesis_header_hex[..78];
         assert_eq!(
-            BlockHeader::decode(&mut slice),
+            BlockHeader::decode(&mut cursor),
             Err(DecodeError::UnexpectedEnd)
         );
     }
