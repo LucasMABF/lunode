@@ -117,11 +117,9 @@ impl<const N: usize> Encodable for [u8; N] {
     }
 }
 
-impl Encodable for Vec<u8> {
-    fn encode<W: Writer>(&self, writer: &mut W) {
-        CompactSize(self.len() as u64).encode(writer);
-        writer.write(self);
-    }
+pub(crate) fn encode_prefixed_bytes<W: Writer>(bytes: &[u8], writer: &mut W) {
+    CompactSize(bytes.len() as u64).encode(writer);
+    writer.write(bytes);
 }
 
 /// An error decoding a value.
@@ -189,27 +187,25 @@ impl<const N: usize> Decodable for [u8; N] {
     }
 }
 
-impl Decodable for Vec<u8> {
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "capped by CompactSize::decode at MAX_SIZE, asserted to fit usize"
-    )]
-    fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
-        let size = CompactSize::decode(reader)?.0 as usize;
-        let mut bytes = Vec::new();
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "capped by CompactSize::decode at MAX_SIZE, asserted to fit usize"
+)]
+pub(crate) fn decode_prefixed_bytes<R: Reader>(reader: &mut R) -> Result<Vec<u8>, DecodeError> {
+    let size = CompactSize::decode(reader)?.0 as usize;
+    let mut bytes = Vec::new();
 
-        let mut i = 0;
-        while i < size {
-            let chunk = (size - i).min(MAX_VECTOR_ALLOCATE);
+    let mut i = 0;
+    while i < size {
+        let chunk = (size - i).min(MAX_VECTOR_ALLOCATE);
 
-            bytes.resize(i + chunk, 0);
+        bytes.resize(i + chunk, 0);
 
-            reader.read(&mut bytes[i..i + chunk])?;
-            i += chunk;
-        }
-
-        Ok(bytes)
+        reader.read(&mut bytes[i..i + chunk])?;
+        i += chunk;
     }
+
+    Ok(bytes)
 }
 
 /// A variable-length integer encoding, used for lengths in the wire format.

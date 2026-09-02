@@ -32,3 +32,6 @@ pub use block::MerkleRoot;
 mod transaction;
 pub use transaction::OutPoint;
 pub use transaction::Txid;
+
+mod script;
+pub use script::Script;
