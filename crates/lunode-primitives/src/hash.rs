@@ -1,5 +1,7 @@
 use lunode_crypto::{Sha256, ripemd160, sha256};
 
+use crate::Writer;
+
 /// Computes the HASH256 (double SHA-256) digest of `data`.
 ///
 /// ```
@@ -58,6 +60,12 @@ impl Hash256 {
     }
 }
 
+impl Writer for Hash256 {
+    fn write(&mut self, data: &[u8]) {
+        self.update(data);
+    }
+}
+
 /// A HASH160 (SHA-256 then RIPEMD-160) hasher.
 ///
 /// ```
@@ -91,6 +99,12 @@ impl Hash160 {
     /// Consumes the hasher and returns the digest.
     pub fn finalize(self) -> [u8; 20] {
         ripemd160(&self.0.finalize())
+    }
+}
+
+impl Writer for Hash160 {
+    fn write(&mut self, data: &[u8]) {
+        self.update(data);
     }
 }
 

@@ -1,7 +1,5 @@
 use alloc::vec::Vec;
 
-use crate::{Hash160, Hash256};
-
 /// Upper bound on decoded sizes (32 MiB, Core's `MAX_SIZE`).
 const MAX_SIZE: u64 = 0x02000000;
 /// Upper bound on a single decode allocation (Core's `MAX_VECTOR_ALLOCATE`).
@@ -82,18 +80,6 @@ pub trait Writer {
 impl Writer for Vec<u8> {
     fn write(&mut self, data: &[u8]) {
         self.extend_from_slice(data);
-    }
-}
-
-impl Writer for Hash256 {
-    fn write(&mut self, data: &[u8]) {
-        self.update(data);
-    }
-}
-
-impl Writer for Hash160 {
-    fn write(&mut self, data: &[u8]) {
-        self.update(data);
     }
 }
 
