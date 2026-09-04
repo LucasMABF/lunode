@@ -117,6 +117,15 @@ impl<const N: usize> Encodable for [u8; N] {
     }
 }
 
+impl<T: Encodable> Encodable for Vec<T> {
+    fn encode<W: Writer>(&self, writer: &mut W) {
+        CompactSize(self.len() as u64).encode(writer);
+        for item in self {
+            item.encode(writer);
+        }
+    }
+}
+
 pub(crate) fn encode_prefixed_bytes<W: Writer>(bytes: &[u8], writer: &mut W) {
     CompactSize(bytes.len() as u64).encode(writer);
     writer.write(bytes);
@@ -184,6 +193,34 @@ impl<const N: usize> Decodable for [u8; N] {
         let mut bytes = [0; N];
         reader.read(&mut bytes)?;
         Ok(bytes)
+    }
+}
+
+impl<T: Decodable> Decodable for Vec<T> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "capped by CompactSize::decode at MAX_SIZE, asserted to fit usize"
+    )]
+    fn decode<R: Reader>(reader: &mut R) -> Result<Self, DecodeError> {
+        const {
+            assert!(size_of::<T>() > 0 && size_of::<T>() <= MAX_VECTOR_ALLOCATE);
+        }
+        let size = CompactSize::decode(reader)?.0 as usize;
+        let mut items = Vec::new();
+
+        let mut i = 0;
+        while i < size {
+            let chunk = (size - i).min(MAX_VECTOR_ALLOCATE / size_of::<T>());
+
+            items.reserve(chunk);
+
+            for _ in 0..chunk {
+                items.push(T::decode(reader)?);
+            }
+            i += chunk;
+        }
+
+        Ok(items)
     }
 }
 
