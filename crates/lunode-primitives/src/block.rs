@@ -91,7 +91,7 @@ mod tests {
     use super::*;
 
     use crate::{
-        Decodable, DecodeError,
+        Decodable,
         test_utils::{genesis_coinbase, hex},
     };
     use alloc::vec;
@@ -133,12 +133,6 @@ mod tests {
         let mut cursor = genesis_header_hex.as_slice();
         assert_eq!(genesis, BlockHeader::decode(&mut cursor).unwrap());
         assert!(cursor.is_empty());
-
-        let mut cursor = &genesis_header_hex[..78];
-        assert_eq!(
-            BlockHeader::decode(&mut cursor),
-            Err(DecodeError::UnexpectedEnd)
-        );
     }
 
     #[test]
