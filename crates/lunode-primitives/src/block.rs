@@ -1,4 +1,17 @@
-use crate::{Encodable, Hash256, serialize::impl_consensus_encoding};
+use crate::{Encodable, Hash256, Transaction, serialize::impl_consensus_encoding};
+use alloc::vec::Vec;
+
+/// A block.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Block {
+    /// The block header.
+    pub header: BlockHeader,
+
+    /// The block's transactions.
+    pub transactions: Vec<Transaction>,
+}
+
+impl_consensus_encoding!(Block, header, transactions);
 
 /// A block header.
 ///
@@ -77,23 +90,30 @@ impl_consensus_encoding!(MerkleRoot);
 mod tests {
     use super::*;
 
-    use crate::{Decodable, DecodeError, test_utils::hex};
-    use alloc::vec::Vec;
+    use crate::{
+        Decodable, DecodeError,
+        test_utils::{genesis_coinbase, hex},
+    };
+    use alloc::vec;
 
-    #[test]
-    fn genesis_block() {
+    fn genesis_header() -> BlockHeader {
         let mut merkle_root_hash =
             hex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b");
         merkle_root_hash.reverse();
 
-        let genesis = BlockHeader {
+        BlockHeader {
             version: 1,
             prev_block_hash: BlockHash([0_u8; 32]),
             merkle_root: MerkleRoot(merkle_root_hash.try_into().unwrap()),
             time: 1231006505,
             bits: CompactTarget(0x1d00ffff),
             nonce: 0x7c2bac1d,
-        };
+        }
+    }
+
+    #[test]
+    fn block_header_exact_bytes() {
+        let genesis = genesis_header();
 
         let mut bytes: Vec<u8> = Vec::new();
         genesis.encode(&mut bytes);
@@ -119,5 +139,27 @@ mod tests {
             BlockHeader::decode(&mut cursor),
             Err(DecodeError::UnexpectedEnd)
         );
+    }
+
+    #[test]
+    fn block_exact_bytes() {
+        let header = genesis_header();
+        let coinbase = genesis_coinbase();
+        let block = Block {
+            header,
+            transactions: vec![coinbase],
+        };
+
+        let mut bytes: Vec<u8> = Vec::new();
+        block.encode(&mut bytes);
+
+        let genesis_block_hex = hex(
+            "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c0101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000",
+        );
+        assert_eq!(bytes, genesis_block_hex);
+
+        let mut cursor = genesis_block_hex.as_slice();
+        assert_eq!(block, Block::decode(&mut cursor).unwrap());
+        assert!(cursor.is_empty());
     }
 }

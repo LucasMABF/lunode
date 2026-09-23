@@ -24,6 +24,7 @@ pub use serialize::Reader;
 pub use serialize::Writer;
 
 mod block;
+pub use block::Block;
 pub use block::BlockHash;
 pub use block::BlockHeader;
 pub use block::CompactTarget;
