@@ -16,12 +16,16 @@ pub use hash::hash160;
 pub use hash::hash256;
 
 mod serialize;
-pub use serialize::CompactSize;
 pub use serialize::Decodable;
 pub use serialize::DecodeError;
 pub use serialize::Encodable;
 pub use serialize::Reader;
 pub use serialize::Writer;
+
+mod compact_size;
+pub use compact_size::CompactSize;
+
+mod vector;
 
 mod block;
 pub use block::Block;

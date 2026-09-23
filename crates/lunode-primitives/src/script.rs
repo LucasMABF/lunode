@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use crate::{
     Decodable, DecodeError, Encodable, Reader, Writer,
-    serialize::{decode_prefixed_bytes, encode_prefixed_bytes},
+    vector::{decode_prefixed_bytes, encode_prefixed_bytes},
 };
 
 /// A script.
