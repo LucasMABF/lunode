@@ -1,6 +1,5 @@
-use crate::{Amount, OutPoint, Script, Transaction, TxIn, TxOut, Txid};
-use alloc::vec;
-use alloc::vec::Vec;
+#![allow(dead_code)]
+use lunode_primitives::{Amount, OutPoint, Script, Transaction, TxIn, TxOut, Txid};
 
 pub fn hex(s: &str) -> Vec<u8> {
     (0..s.len())
