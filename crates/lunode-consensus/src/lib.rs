@@ -8,3 +8,4 @@ extern crate alloc;
 
 mod merkle;
 pub use merkle::compute_merkle_root;
+pub use merkle::merkle_root;
