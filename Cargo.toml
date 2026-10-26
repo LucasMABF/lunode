@@ -17,6 +17,7 @@ missing_debug_implementations = "warn"
 [workspace.dependencies]
 lunode-crypto = { path = "crates/lunode-crypto" }
 lunode-primitives = { path = "crates/lunode-primitives" }
+lunode-consensus = { path = "crates/lunode-consensus" }
 proptest = "1.11.0"
 
 [workspace.package]
