@@ -100,9 +100,21 @@ pub enum DecodeError {
     UnexpectedEnd,
     /// The value was not encoded in its minimal form.
     NonCanonical,
-    /// The decoded size exceeds the 32 MiB limit.
+    /// The decoded size exceeds the maximum.
     SizeTooLarge,
 }
+
+impl core::fmt::Display for DecodeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            DecodeError::UnexpectedEnd => f.write_str("unexpected end of input"),
+            DecodeError::NonCanonical => f.write_str("non-canonical encoding"),
+            DecodeError::SizeTooLarge => f.write_str("size exceeds maximum"),
+        }
+    }
+}
+
+impl core::error::Error for DecodeError {}
 
 /// A source of serialized bytes.
 pub trait Reader {
