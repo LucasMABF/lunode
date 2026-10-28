@@ -23,3 +23,6 @@ proptest = "1.11.0"
 [workspace.package]
 license = "MIT"
 publish = false
+
+[profile.release]
+overflow-checks = true
