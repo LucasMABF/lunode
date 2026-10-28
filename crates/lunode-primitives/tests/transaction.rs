@@ -6,6 +6,41 @@ use proptest::prelude::*;
 mod common;
 use common::{genesis_coinbase, hex};
 
+fn first_payment() -> Transaction {
+    let mut first_spent_txid =
+        hex("0437cd7f8525ceed2324359c2d0ba26006d92d856a9c20fa0241106ee5a597c9");
+    first_spent_txid.reverse();
+
+    Transaction {
+        version: 1,
+        inputs: vec![TxIn {
+            prevout: OutPoint {
+                txid: Txid(first_spent_txid.try_into().unwrap()),
+                vout: 0,
+            },
+            script_sig: Script(hex(
+                "47304402204e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd410220181522ec8eca07de4860a4acdd12909d831cc56cbbac4622082221a8768d1d0901",
+            )),
+            sequence: 0xffffffff,
+        }],
+        outputs: vec![
+            TxOut {
+                value: Amount(1_000_000_000),
+                script_pubkey: Script(hex(
+                    "4104ae1a62fe09c5f51b13905f07f06b99a2f7159b2225f374cd378d71302fa28414e7aab37397f554a7df5f142c21c1b7303b8a0626f1baded5c72a704f7e6cd84cac",
+                )),
+            },
+            TxOut {
+                value: Amount(4_000_000_000),
+                script_pubkey: Script(hex(
+                    "410411db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3ac",
+                )),
+            },
+        ],
+        lock_time: 0,
+    }
+}
+
 #[test]
 fn outpoint_exact_bytes() {
     let mut first_spent_txid =
@@ -105,9 +140,6 @@ fn transaction_exact_bytes() {
     let mut first_payment_txid =
         hex("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16");
     first_payment_txid.reverse();
-    let mut first_spent_txid =
-        hex("0437cd7f8525ceed2324359c2d0ba26006d92d856a9c20fa0241106ee5a597c9");
-    first_spent_txid.reverse();
 
     let tests: &[(Transaction, Vec<u8>, Txid)] = &[
         (
@@ -118,34 +150,7 @@ fn transaction_exact_bytes() {
             Txid(genesis_coinbase_txid.try_into().unwrap()),
         ),
         (
-            Transaction {
-                version: 1,
-                inputs: vec![TxIn {
-                    prevout: OutPoint {
-                        txid: Txid(first_spent_txid.try_into().unwrap()),
-                        vout: 0,
-                    },
-                    script_sig: Script(hex(
-                        "47304402204e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd410220181522ec8eca07de4860a4acdd12909d831cc56cbbac4622082221a8768d1d0901",
-                    )),
-                    sequence: 0xffffffff,
-                }],
-                outputs: vec![
-                    TxOut {
-                        value: Amount(1_000_000_000),
-                        script_pubkey: Script(hex(
-                            "4104ae1a62fe09c5f51b13905f07f06b99a2f7159b2225f374cd378d71302fa28414e7aab37397f554a7df5f142c21c1b7303b8a0626f1baded5c72a704f7e6cd84cac",
-                        )),
-                    },
-                    TxOut {
-                        value: Amount(4_000_000_000),
-                        script_pubkey: Script(hex(
-                            "410411db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3ac",
-                        )),
-                    },
-                ],
-                lock_time: 0,
-            },
+            first_payment(),
             hex(
                 "0100000001c997a5e56e104102fa209c6a852dd90660a20b2d9c352423edce25857fcd3704000000004847304402204e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd410220181522ec8eca07de4860a4acdd12909d831cc56cbbac4622082221a8768d1d0901ffffffff0200ca9a3b00000000434104ae1a62fe09c5f51b13905f07f06b99a2f7159b2225f374cd378d71302fa28414e7aab37397f554a7df5f142c21c1b7303b8a0626f1baded5c72a704f7e6cd84cac00286bee0000000043410411db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3ac00000000",
             ),
@@ -165,6 +170,75 @@ fn transaction_exact_bytes() {
             "row: {i}"
         );
         assert!(cursor.is_empty(), "row: {i}");
+    }
+}
+
+#[test]
+fn is_null() {
+    let tests: &[(OutPoint, bool)] = &[
+        (
+            OutPoint {
+                txid: Txid([0; 32]),
+                vout: u32::MAX,
+            },
+            true,
+        ),
+        (
+            OutPoint {
+                txid: Txid([0; 32]),
+                vout: 0,
+            },
+            false,
+        ),
+        (
+            OutPoint {
+                txid: Txid([1; 32]),
+                vout: u32::MAX,
+            },
+            false,
+        ),
+    ];
+
+    for (i, (value, expected)) in tests.iter().enumerate() {
+        assert_eq!(value.is_null(), *expected, "row: {i}");
+    }
+}
+
+#[test]
+fn is_coinbase() {
+    let tests: &[(Transaction, bool)] = &[
+        (genesis_coinbase(), true),
+        (first_payment(), false),
+        (
+            Transaction {
+                version: 1,
+                inputs: vec![
+                    TxIn {
+                        prevout: OutPoint {
+                            txid: Txid([0; 32]),
+                            vout: u32::MAX,
+                        },
+                        script_sig: Script(vec![]),
+                        sequence: u32::MAX,
+                    },
+                    TxIn {
+                        prevout: OutPoint {
+                            txid: Txid([1; 32]),
+                            vout: u32::MAX,
+                        },
+                        script_sig: Script(vec![]),
+                        sequence: u32::MAX,
+                    },
+                ],
+                outputs: vec![],
+                lock_time: 0,
+            },
+            false,
+        ),
+    ];
+
+    for (i, (value, expected)) in tests.iter().enumerate() {
+        assert_eq!(value.is_coinbase(), *expected, "row: {i}");
     }
 }
 

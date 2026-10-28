@@ -18,6 +18,13 @@ pub struct OutPoint {
 
 impl_consensus_encoding!(OutPoint, txid, vout);
 
+impl OutPoint {
+    /// Returns `true` if the txid is all zeros and `vout` is `u32::MAX`.
+    pub fn is_null(&self) -> bool {
+        self.txid == Txid([0; 32]) && self.vout == u32::MAX
+    }
+}
+
 /// A transaction input.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TxIn {
@@ -69,5 +76,10 @@ impl Transaction {
         let mut hasher = Hash256::new();
         self.encode(&mut hasher);
         Txid(hasher.finalize())
+    }
+
+    /// Returns `true` if the transaction has a single input, with a null prevout.
+    pub fn is_coinbase(&self) -> bool {
+        self.inputs.len() == 1 && self.inputs[0].prevout.is_null()
     }
 }
