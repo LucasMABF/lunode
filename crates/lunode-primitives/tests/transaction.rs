@@ -298,6 +298,8 @@ proptest! {
 
         prop_assert_eq!(hash256(&bytes), transaction.hash().0);
 
+        prop_assert_eq!(transaction.encoded_len(), bytes.len());
+
         let mut cursor = bytes.as_slice();
         prop_assert_eq!(Transaction::decode(&mut cursor).unwrap(), transaction);
         prop_assert!(cursor.is_empty());

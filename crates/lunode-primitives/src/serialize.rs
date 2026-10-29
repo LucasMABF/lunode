@@ -73,6 +73,14 @@ impl Writer for Vec<u8> {
     }
 }
 
+struct ByteCounter(usize);
+
+impl Writer for ByteCounter {
+    fn write(&mut self, data: &[u8]) {
+        self.0 += data.len();
+    }
+}
+
 /// A type with a consensus serialization.
 ///
 /// ```
@@ -85,6 +93,13 @@ impl Writer for Vec<u8> {
 pub trait Encodable {
     /// Encodes `self` into `writer`.
     fn encode<W: Writer>(&self, writer: &mut W);
+
+    /// Returns the length of the encoding of `self`, in bytes.
+    fn encoded_len(&self) -> usize {
+        let mut counter = ByteCounter(0);
+        self.encode(&mut counter);
+        counter.0
+    }
 }
 
 impl<const N: usize> Encodable for [u8; N] {
